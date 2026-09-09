@@ -2,18 +2,28 @@
 
 Miscellaneous Unix shell tools
 
-## align-tables.awk
+## n-table-align.awk
 
 Align Markdown or Org mode tables.
 
+Number columns get right aligned.
+
 Usage:
 ```
-   awk -f align-tables.awk file.md  > out.md
-   align-tables.awk file.md > out.md
-   cat notes.org | align-tables.awk > out.org
+awk -f n-table-align.awk file.md  > out.md
+n-table-align.awk file.md > out.md
+cat notes.org | n-table-align.awk > out.org
+```
+## n-gpt.sh
+
+Pipe text through GPT API with an instruction
+
+Usage: 
+```
+echo "hello" | n_gpt.sh "translate to Spanish"
 ```
 
+## n-renumber.awk
 
-## gptapi
-
+Renumbers numbered lists to sequential in Markdown or Org.
 

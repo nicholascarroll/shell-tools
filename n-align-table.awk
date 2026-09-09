@@ -1,9 +1,9 @@
 #!/usr/bin/awk -f
-# align-tables.awk: straighten Markdown and Org-mode tables.
+# n-align-table.awk: straighten Markdown and Org-mode tables.
 #
 # Usage:
-#   awk -f align-tables.awk file.md  > out.md
-#   cat notes.org | awk -f align-tables.awk > out.org
+#   awk -f n-align-table.awk.awk file.md  > out.md
+#   cat notes.org | awk -f n-align-table.awk.awk > out.org
 #
 
 function trim(s) {
