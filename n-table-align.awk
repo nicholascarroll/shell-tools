@@ -7,6 +7,8 @@
 #   Markdown:  | a | b |          separator: |---|:---:|---:|
 #   Org-mode:  | a | b |          separator: |---+------|
 #
+# A pipe escaped as "\|" is part of the cell, not a column break.
+#
 # Any column whose data cells are all numeric (and not already given an
 # explicit alignment via a Markdown ":---:" / "---:" separator cell) is
 # automatically right-aligned.
@@ -29,6 +31,21 @@ function repeat(ch, n,    s, i) {
     s = ""
     for (i = 0; i < n; i++) s = s ch
     return s
+}
+
+# split a row's inner text into cells on "|", except an escaped "\|"
+# (the GFM way to put a literal pipe in a cell), which stays in the cell
+function split_cells(s, parts,    n, i, ch, cur) {
+    if (index(s, "\\|") == 0) return split(s, parts, /\|/)
+    n = 0; cur = ""
+    for (i = 1; i <= length(s); i++) {
+        ch = substr(s, i, 1)
+        if (ch == "\\" && substr(s, i + 1, 1) == "|") { cur = cur "\\|"; i++ }
+        else if (ch == "|") { parts[++n] = cur; cur = "" }
+        else cur = cur ch
+    }
+    parts[++n] = cur
+    return n
 }
 
 function is_tableline(line,    t) {
@@ -179,7 +196,7 @@ function flush_block() {
             n = split(inner, parts, /\+/)
             ncell[nrows] = n
         } else {
-            n = split(inner, parts, /\|/)
+            n = split_cells(inner, parts)
             ncell[nrows] = n
             is_sep = 1
             for (i = 1; i <= n; i++) {

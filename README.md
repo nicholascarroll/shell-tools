@@ -46,26 +46,30 @@ Decrypt GNU PGP encrypted text without touching disk.
 
 Usage: 
 ```
-
+	
 ```
 
-## n-to-table.sh
-* TODO get the emacs name
+## n-table-convert.sh
 
 Convert CSV, TSV, or JSON data into an aligned Markdown or Org mode table.
 
-The input format is auto-detected.
+The input format is auto-detected.  JSON can be an array of objects,
+an array of arrays, a single object, or JSON Lines.
+
+Alignment is done by `n-table-align.awk`, which must be in the same
+directory or on `PATH`. JSON input requires `jq`.
 
 Usage:
 ```
-cat data.csv  | n-to-table.sh --md > table.md
-cat data.tsv  | n-to-table.sh --org > table.org
-cat data.json | n-to-table.sh --md > table.md
+cat data.csv  | n-table-convert.sh --md > table.md
+cat data.tsv  | n-table-convert.sh --org > table.org
+cat data.json | n-table-convert.sh --md > table.md
 ```
 
 ## n-dict.sh
 
 Look up a word using the offline `sdcv` dictionary and print cleaned-up output.
+* TODO
 
 Usage:
 ```
