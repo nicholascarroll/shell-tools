@@ -48,3 +48,26 @@ Usage:
 ```
 
 ```
+
+## n-to-table.sh
+* TODO get the emacs name
+
+Convert CSV, TSV, or JSON data into an aligned Markdown or Org mode table.
+
+The input format is auto-detected.
+
+Usage:
+```
+cat data.csv  | n-to-table.sh --md > table.md
+cat data.tsv  | n-to-table.sh --org > table.org
+cat data.json | n-to-table.sh --md > table.md
+```
+
+## n-dict.sh
+
+Look up a word using the offline `sdcv` dictionary and print cleaned-up output.
+
+Usage:
+```
+echo "word" | n-dict.sh
+```
