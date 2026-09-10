@@ -17,7 +17,7 @@ payload=$(jq -n \
   --arg instruction "$instruction" \
   --arg input "$input" \
   '{
-    "model": "gpt-5-mini",
+    "model": "gpt-5.6-luna",
     "messages": [
       {"role": "system", "content": ($system + "\nInstruction: " + $instruction)},
       {"role": "user", "content": $input}
