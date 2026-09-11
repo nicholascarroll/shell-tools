@@ -1,81 +1,49 @@
 #!/bin/sh
-# n-gpg.sh
+# n-gpg.sh -- symmetric gpg encrypt/decrypt filter for emil's Alt-| pipe.
+# Reads stdin, writes stdout. Plaintext lives only in pipes and memory, so
+# use encrypted swap if paging is a concern. Requires: gpg.
 #
-# GPG decrypt filter for emil's shell pipe command.  Plaintext exists
-# only in pipes and process memory (this script's, then emil's).
-# Neither process locks its memory, so under memory pressure the OS
-# could still page it out to swap; use encrypted swap if that matters.
-#
-# Usage in emil: mark the armored block, then
-#
-#   Alt-|  n-gpg.sh -d        plaintext appears in *Shell Output*
-#
-# Also works from the shell:  n-gpg.sh -d < vogon-poetry.asc | emil
-#
-# Using it inside emil:
-#
-# * The ciphertext must be ASCII-armored (gpg --armor).  emil only
-#   loads valid UTF-8, so a binary .gpg file can't be opened.
-#
-# * Prefer Alt-| to C-u Alt-|.  C-u puts the plaintext into the
-#   file-backed buffer in place of the ciphertext, so a reflexive
-#   C-x C-s writes it to disk.  And emil replaces the region even when
-#   the command fails -- here, with the error message.  C-_ undoes it.
-#
-# * Passphrase prompts need an emil that hands the terminal over while
-#   a shell command runs (the pipe.c terminal-handover patch).  Older
-#   emil reads the terminal itself during the command and eats the
-#   keystrokes meant for pinentry.
-#
-# * emil discards stderr, so from inside emil failures are reported
-#   on stdout, where they show up in *Shell Output*.
-#
-# Fail-closed: gpg decrypts as a stream and writes plaintext before it
-# reaches the integrity check at the end of the message, so a corrupt
-# or tampered file yields partial, garbled plaintext plus an error.
-# This script holds the plaintext until gpg has finished and releases
-# it only if gpg exits 0.  Note gpg also exits non-zero for a *valid*
-# file signed by a key not in your keyring; import the signer's key.
-#
-# Requires: gpg
+# emil notes: mark a region and pipe it with Alt-| (not C-u Alt-|, which can
+# leave plaintext in the file-backed buffer). Text must be ASCII-armored.
+# Passphrase prompts need an emil that hands the terminal to the command
+# while it runs. On failure nothing is written, so a bad run won't clobber
+# the region -- gpg streams plaintext before its final integrity check, so
+# we hold gpg's output and release it only on exit 0.
 
 set -eu
 
-# emil discards stderr; send ours where it can be seen.
+# emil discards stderr; when we're not on a terminal, fold it into stdout so
+# messages still reach *Shell Output*.
 [ -t 2 ] || exec 2>&1
 
-# -d  decrypt a normal OpenPGP message (unchanged behaviour).
-# -b  decrypt a Beorg message.  The Beorg iPhone app writes a headerless
-#     message -- just the encrypted-data packet, with no leading packet
-#     naming the cipher or passphrase hash -- so gpg mis-guesses (IDEA) and
-#     fails with "encrypted message has been manipulated".  -b prepends the
-#     missing header packet (v4 symmetric-key ESK: AES256, simple SHA-256
-#     S2K) so gpg reads the right parameters and decrypts.  Use -b only on
-#     Beorg blocks; on a normal message it would corrupt the stream (which
-#     just fails closed, releasing no plaintext).
-beorg=0
-case ${1-} in
-    -d)        ;;
-    -bd | -db) beorg=1 ;;
-    *)
-        echo "usage: n-gpg.sh -d | -bd   (reads gpg data on stdin, writes plaintext to stdout)" >&2
-        echo "       -d   normal OpenPGP message" >&2
-        echo "       -bd  Beorg headerless message (repairs it, then decrypts); -db is equivalent" >&2
-        exit 1
-        ;;
-esac
-if [ $# -ne 1 ]; then
-    echo "usage: n-gpg.sh -d | -b   (exactly one flag)" >&2
-    exit 1
-fi
+usage() {
+    cat >&2 <<'EOF'
+usage: n-gpg.sh MODE     reads stdin, writes stdout
 
-# If GPG_TTY isn't set, work it out.  The value must be the real
-# device name (e.g. /dev/pts/3 or /dev/ttys003): pinentry is started
-# by gpg-agent, a daemon with no controlling terminal, so the generic
-# alias /dev/tty means nothing to it.  Try stderr first; under emil
-# it's a pipe, so fall back to asking ps(1) for this process's
-# controlling terminal.  With no terminal at all (cron, CI) GPG_TTY
-# stays empty and gpg reports its own error.
+  -e     encrypt   text in, ASCII-armored ciphertext out (prompts for a passphrase)
+  -eb    encrypt in Beorg's headerless format, for pasting back into Beorg (-be too)
+  -d     decrypt   OpenPGP message in, text out
+  -bd    decrypt a Beorg message, repairing the header it leaves out (-db too)
+
+In emil: mark a region, then  Alt-| n-gpg.sh -d
+EOF
+    exit "${1:-1}"
+}
+
+mode=; beorg=0
+case ${1-} in
+    -e)          mode=encrypt ;;
+    -eb | -be)   mode=encrypt; beorg=1 ;;
+    -d)          mode=decrypt ;;
+    -bd | -db)   mode=decrypt; beorg=1 ;;
+    -h | --help) usage 0 ;;
+    *)           usage ;;
+esac
+[ $# -eq 1 ] || usage
+
+# pinentry is run by gpg-agent, which has no controlling terminal, so GPG_TTY
+# must name the real device. Take it from stderr, or from ps if stderr is a
+# pipe (as under emil); leave it empty when there's no terminal at all.
 if [ -z "${GPG_TTY-}" ]; then
     GPG_TTY=$(tty <&2 2>/dev/null) || GPG_TTY=
     if [ -z "$GPG_TTY" ]; then
@@ -84,35 +52,85 @@ if [ -z "${GPG_TTY-}" ]; then
         case $t in
             '' | '?' | '??' | -) ;;
             /*) [ -c "$t" ] && GPG_TTY=$t ;;
-            *) [ -c "/dev/$t" ] && GPG_TTY=/dev/$t ;;
+            *)  [ -c "/dev/$t" ] && GPG_TTY=/dev/$t ;;
         esac
     fi
 fi
 export GPG_TTY
 
-# Run gpg with its plaintext going to $p and its messages to $err.
-# The inner subshell releases the plaintext on fd 4 (our real stdout)
-# only if gpg succeeded.  The trailing "x" sentinel stops $(...)
-# stripping trailing newlines from the plaintext.
+# -eb: Beorg reads only its own headerless format, so mimic it. Encrypt with a
+# simple SHA-256 S2K and AES256, drop the 6-byte session-key packet gpg adds
+# (leaving the bare encrypted-data packet Beorg expects), and re-armor via
+# enarmor with the banner relabelled MESSAGE. The temp file holds ciphertext
+# only; the plaintext never leaves stdin and memory.
+if [ "$mode" = encrypt ] && [ "$beorg" -eq 1 ]; then
+    tmp=$(mktemp "${TMPDIR:-/tmp}/n-gpg.XXXXXX") || exit 1
+    trap 'rm -f "$tmp"' EXIT INT TERM HUP
+    if err=$(gpg --quiet --symmetric --s2k-mode 0 --s2k-digest-algo SHA256 \
+                 --cipher-algo AES256 2>&1 >"$tmp"); then
+        tail -c +7 "$tmp" | gpg --enarmor 2>/dev/null \
+            | sed -e 's/PGP ARMORED FILE/PGP MESSAGE/' -e '/^Comment:/d' -e '/^Version:/d'
+        if [ -t 2 ] && [ -n "$err" ]; then printf '%s\n' "$err" >&2; fi
+        exit 0
+    else
+        rc=$?
+        [ -t 2 ] && exec 1>&2
+        printf 'n-gpg.sh: gpg failed (exit %s); no ciphertext written\n' "$rc"
+        [ -n "$err" ] && printf '%s\n' "$err"
+        exit "$rc"
+    fi
+fi
+
+# -bd: Beorg writes a headerless message, so gpg mis-guesses and reports
+# "manipulated". Clean up common export damage (a UTF-8 BOM or junk before
+# -----BEGIN, CRLF endings; NULs from a UTF-16 file are dropped by $(...)),
+# bail out clearly if no readable block survives, and let the decrypt below
+# prepend the missing header.
+beorg_clean=
+if [ "$mode" = decrypt ] && [ "$beorg" -eq 1 ]; then
+    beorg_clean=$(cat | awk '
+        /-----BEGIN PGP/ { p = 1; sub(/^.*-----BEGIN PGP/, "-----BEGIN PGP") }
+        p                { sub(/\r$/, ""); print }
+        /-----END PGP/   { exit }
+    ')
+    if ! printf '%s\n' "$beorg_clean" | grep -q -- '-----BEGIN PGP'; then
+        [ -t 2 ] && exec 1>&2
+        echo "n-gpg.sh: no ASCII-armored PGP block on input." >&2
+        echo "  It must start with -----BEGIN PGP MESSAGE-----." >&2
+        echo "  A binary .gpg or UTF-16 file won't work; re-export as armored text." >&2
+        exit 1
+    fi
+    if [ "$(printf '%s\n' "$beorg_clean" | gpg --dearmor 2>/dev/null | wc -c)" -le 0 ]; then
+        [ -t 2 ] && exec 1>&2
+        echo "n-gpg.sh: the PGP block is present but unreadable (truncated or bad checksum)." >&2
+        exit 1
+    fi
+fi
+
+# Run gpg with its output captured in $p and its messages in $err, releasing
+# the output on fd 4 (the real stdout) only if gpg exited 0. The trailing "x"
+# keeps $(...) from stripping trailing newlines. The 6 prepended bytes for
+# -bd are the tag-3 packet gpg needs: v4, AES256 (9), simple S2K (0), SHA-256 (8).
 exec 4>&1
 if err=$(
     {
-        if [ "$beorg" -eq 1 ]; then
-            # Prepend the header Beorg omits, then decrypt.  gpg --dearmor
-            # turns the armored block into raw packets; the 6 bytes are the
-            # tag-3 packet: v4, AES256 (9), simple S2K (0), SHA-256 (8).
-            p=$( { printf '\303\004\004\011\000\010'
-                   gpg --dearmor 2>&3 3>&- 4>&- ; } \
-                 | gpg --quiet --decrypt 2>&3 3>&- 4>&- && printf x) || exit
-        else
-            p=$(gpg --quiet --decrypt \
-                    2>&3 3>&- 4>&- && printf x) || exit
-        fi
+        case $mode in
+        encrypt)
+            p=$(gpg --quiet --symmetric --armor 2>&3 3>&- 4>&- && printf x) || exit
+            ;;
+        decrypt)
+            if [ "$beorg" -eq 1 ]; then
+                p=$( { printf '\303\004\004\011\000\010'
+                       printf '%s\n' "$beorg_clean" | gpg --dearmor 2>&3 3>&- 4>&- ; } \
+                     | gpg --quiet --decrypt 2>&3 3>&- 4>&- && printf x) || exit
+            else
+                p=$(gpg --quiet --decrypt 2>&3 3>&- 4>&- && printf x) || exit
+            fi
+            ;;
+        esac
         printf '%s' "${p%x}" >&4
     } 3>&1
 ); then
-    # gpg's notes on success (e.g. signature details) go to the
-    # terminal if there is one, never into the plaintext.
     if [ -t 2 ] && [ -n "$err" ]; then
         printf '%s\n' "$err" >&2
     fi
@@ -121,9 +139,12 @@ else
     rc=$?
 fi
 
-# Failure.  Report on the terminal if we have one, else on stdout so
-# emil shows it in *Shell Output*.
+# Failure: report on the terminal, else on stdout so emil shows it.
 [ -t 2 ] && exec 1>&2
-printf 'n-gpg.sh: gpg failed (exit %s); no plaintext released\n' "$rc"
+if [ "$mode" = encrypt ]; then
+    printf 'n-gpg.sh: gpg failed (exit %s); no ciphertext written\n' "$rc"
+else
+    printf 'n-gpg.sh: gpg failed (exit %s); no plaintext released\n' "$rc"
+fi
 [ -n "$err" ] && printf '%s\n' "$err"
 exit "$rc"
