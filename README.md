@@ -84,9 +84,9 @@ Usage:
 
 Decrypt GNU PGP encrypted text without touching disk.
 
--e encrypt
--d decrypt
--b Beorg  compatible
+-e encrypt  
+-d decrypt  
+-b Beorg  compatible  
 
 Usage: 
 
