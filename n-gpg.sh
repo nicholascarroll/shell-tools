@@ -44,8 +44,28 @@ set -eu
 # emil discards stderr; send ours where it can be seen.
 [ -t 2 ] || exec 2>&1
 
-if [ $# -ne 1 ] || [ "$1" != "-d" ]; then
-    echo "usage: n-gpg.sh -d   (reads gpg data on stdin, writes plaintext to stdout)" >&2
+# -d  decrypt a normal OpenPGP message (unchanged behaviour).
+# -b  decrypt a Beorg message.  The Beorg iPhone app writes a headerless
+#     message -- just the encrypted-data packet, with no leading packet
+#     naming the cipher or passphrase hash -- so gpg mis-guesses (IDEA) and
+#     fails with "encrypted message has been manipulated".  -b prepends the
+#     missing header packet (v4 symmetric-key ESK: AES256, simple SHA-256
+#     S2K) so gpg reads the right parameters and decrypts.  Use -b only on
+#     Beorg blocks; on a normal message it would corrupt the stream (which
+#     just fails closed, releasing no plaintext).
+beorg=0
+case ${1-} in
+    -d)        ;;
+    -bd | -db) beorg=1 ;;
+    *)
+        echo "usage: n-gpg.sh -d | -bd   (reads gpg data on stdin, writes plaintext to stdout)" >&2
+        echo "       -d   normal OpenPGP message" >&2
+        echo "       -bd  Beorg headerless message (repairs it, then decrypts); -db is equivalent" >&2
+        exit 1
+        ;;
+esac
+if [ $# -ne 1 ]; then
+    echo "usage: n-gpg.sh -d | -b   (exactly one flag)" >&2
     exit 1
 fi
 
@@ -77,8 +97,17 @@ export GPG_TTY
 exec 4>&1
 if err=$(
     {
-        p=$(gpg --quiet --decrypt \
-                2>&3 3>&- 4>&- && printf x) || exit
+        if [ "$beorg" -eq 1 ]; then
+            # Prepend the header Beorg omits, then decrypt.  gpg --dearmor
+            # turns the armored block into raw packets; the 6 bytes are the
+            # tag-3 packet: v4, AES256 (9), simple S2K (0), SHA-256 (8).
+            p=$( { printf '\303\004\004\011\000\010'
+                   gpg --dearmor 2>&3 3>&- 4>&- ; } \
+                 | gpg --quiet --decrypt 2>&3 3>&- 4>&- && printf x) || exit
+        else
+            p=$(gpg --quiet --decrypt \
+                    2>&3 3>&- 4>&- && printf x) || exit
+        fi
         printf '%s' "${p%x}" >&4
     } 3>&1
 ); then
