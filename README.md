@@ -30,6 +30,46 @@ Usage:
 echo "hello" | n_gpt.sh "translate to Spanish"
 ```
 
+## n-thai-zw.sh
+
+Insert U+200B ZERO WIDTH SPACE between Thai words, so the text looks
+unchanged but word motion, word wrap and tag lookup see word boundaries.
+The LLM (via n-gpt.sh) proposes the boundaries; its output is accepted
+only if removing them gives back the input byte for byte. On any
+failure the text is passed through unchanged. Lines that already
+contain U+200B are left alone.
+
+Usage:
+```
+n-thai-zw.sh lesson.txt > annotated.txt
+n-thai-zw.sh -i lesson.txt          # in place
+n-thai-zw.sh -f -i lesson.txt       # redo existing boundaries
+```
+In emil: mark a region, `Ctrl-u Alt-|` `n-thai-zw.sh`.
+
+## n-thai-vocab.sh
+
+Build a personal Thai-English vocabulary from what you read. Takes
+annotated Thai text, sends the words not yet in `~/thai/dict.tsv` to
+the LLM in batches, validates the entries (Thai headword, Paiboon
+romanization, short English definition), adds them, re-sorts the
+dictionary and rebuilds `~/thai/tags`, so `M-.` on a Thai word in emil
+jumps to its entry. New words are also appended to
+`~/thai/acquired.log` with the date and source.
+
+Usage:
+```
+n-thai-vocab.sh -s "chapter 3" < annotated.txt
+n-thai-vocab.sh -n < annotated.txt   # list unknown words only
+n-thai-vocab.sh -R                   # check, sort, dedupe, re-index
+```
+In emil: mark a region, `Alt-|` `n-thai-vocab.sh -s "chapter 3"`.
+The new entries and a summary appear in `*Shell Output*`.
+
+The dictionary is replaced atomically; if it is open in emil, emil
+asks before saving over the change. See the header of each script for
+environment variables.
+
 ## n-fetch-md.sh
 
 Fetch a webpage and translate it to Markdown using Pandoc.
