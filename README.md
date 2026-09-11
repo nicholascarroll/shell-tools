@@ -2,6 +2,45 @@
 
 Miscellaneous Unix shell tools
 
+## n-gpg.sh
+
+Encrypt and decrypt GNU PGP encrypted text without touching disk.
+
+-e encrypt  
+-d decrypt  
+-b Beorg  compatible  
+
+Usage: 
+
+```
+echo "-----BEGIN PGP MESSAGE-----
+
+0mkBG7/U9aH06lvFmoZD/tYYlaIDqCkkuEjp+EET0i2HGLZQQfg0OYql1B/TiBUz
+qPXJeUZy5JgLGK1s7dS0OdA768JpyKbhG5Jkr+aITWB3I2PWpytwxQoA6OAvDKs4
+TRhjXsJOP3xGZZM=
+=fJY4
+-----END PGP MESSAGE-----
+" | n-gpg.sh -db     # password is opensesame
+```
+
+
+## n-table-convert.sh
+
+Convert CSV, TSV, or JSON data into an aligned Markdown or Org mode table.
+
+The input format is auto-detected.  JSON can be an array of objects,
+an array of arrays, a single object, or JSON Lines.
+
+Alignment is done by `n-table-align.awk`, which must be in the same
+directory or on `PATH`. JSON input requires `jq`.
+
+Usage:
+```
+cat data.csv  | n-table-convert.sh --md > table.md
+cat data.tsv  | n-table-convert.sh --org > table.org
+cat data.json | n-table-convert.sh --md > table.md
+```
+
 ## n-table-align.awk
 
 Align Markdown or Org mode tables.
@@ -80,42 +119,5 @@ Usage:
 
 ```
 
-## n-gpg.sh
 
-Encrypt and decrypt GNU PGP encrypted text without touching disk.
-
--e encrypt  
--d decrypt  
--b Beorg  compatible  
-
-Usage: 
-
-```
-echo "-----BEGIN PGP MESSAGE-----
-
-0mkBG7/U9aH06lvFmoZD/tYYlaIDqCkkuEjp+EET0i2HGLZQQfg0OYql1B/TiBUz
-qPXJeUZy5JgLGK1s7dS0OdA768JpyKbhG5Jkr+aITWB3I2PWpytwxQoA6OAvDKs4
-TRhjXsJOP3xGZZM=
-=fJY4
------END PGP MESSAGE-----
-" | n-gpg.sh -db     # password is opensesame
-```
-
-
-## n-table-convert.sh
-
-Convert CSV, TSV, or JSON data into an aligned Markdown or Org mode table.
-
-The input format is auto-detected.  JSON can be an array of objects,
-an array of arrays, a single object, or JSON Lines.
-
-Alignment is done by `n-table-align.awk`, which must be in the same
-directory or on `PATH`. JSON input requires `jq`.
-
-Usage:
-```
-cat data.csv  | n-table-convert.sh --md > table.md
-cat data.tsv  | n-table-convert.sh --org > table.org
-cat data.json | n-table-convert.sh --md > table.md
-```
 
