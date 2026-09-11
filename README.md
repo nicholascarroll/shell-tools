@@ -82,7 +82,7 @@ Usage:
 
 ## n-gpg.sh
 
-Decrypt GNU PGP encrypted text without touching disk.
+Encrypt and decrypt GNU PGP encrypted text without touching disk.
 
 -e encrypt  
 -d decrypt  
