@@ -106,26 +106,3 @@ cat data.tsv  | n-table-convert.sh --org > table.org
 cat data.json | n-table-convert.sh --md > table.md
 ```
 
-## n-dict.sh
-
-Look up a word using the offline `sdcv` dictionary and print cleaned-up output.
-* TODO
-
-Usage:
-```
-echo "word" | n-dict.sh
-```
-
-## n-sense.sh
-
-Implements a system that provides contextual word lookup, semantic cross-referencing, and definition resolution for prose-based projects. 
-The system operates as an extension to a terminal-based text editor (via ctags) and produces static, deterministic, version-controllable artifacts.
-The system addresses three distinct lookup needs that arise during reading and writing:
-
-  1.	Where a term is formally established within a project.
-  2.	How a term is actually used across the project.
-  3.	What a term means according to an external reference standard.
-
-It uses Hybrid Sense Induction and Grounded Definition Generation.
-Webster's 1828 dictionary of American English is be the external reference standard for the first version of this (future versions will need a dictionary more modern and extensive).
-
