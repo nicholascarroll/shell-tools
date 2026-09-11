@@ -15,12 +15,11 @@ Usage:
 ```
 echo "-----BEGIN PGP MESSAGE-----
 
-0mkBG7/U9aH06lvFmoZD/tYYlaIDqCkkuEjp+EET0i2HGLZQQfg0OYql1B/TiBUz
-qPXJeUZy5JgLGK1s7dS0OdA768JpyKbhG5Jkr+aITWB3I2PWpytwxQoA6OAvDKs4
-TRhjXsJOP3xGZZM=
-=fJY4
+0jYBy0UqbG4ok9lMzwWfA41JoQaUWxaTpzoCnNE++SUkna3QX5f8M8oZu4b91T+W
+vucuBsxPr48=
+=Qz+R
 -----END PGP MESSAGE-----
-" | n-gpg.sh -db     # password is opensesame
+" | n-gpg.sh -db     # password is secret
 ```
 
 
