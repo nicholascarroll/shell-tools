@@ -84,10 +84,23 @@ Usage:
 
 Decrypt GNU PGP encrypted text without touching disk.
 
+-e encrypt
+-d decrypt
+-b Beorg  compatible
+
 Usage: 
+
 ```
-	
+echo "-----BEGIN PGP MESSAGE-----
+
+0mkBG7/U9aH06lvFmoZD/tYYlaIDqCkkuEjp+EET0i2HGLZQQfg0OYql1B/TiBUz
+qPXJeUZy5JgLGK1s7dS0OdA768JpyKbhG5Jkr+aITWB3I2PWpytwxQoA6OAvDKs4
+TRhjXsJOP3xGZZM=
+=fJY4
+-----END PGP MESSAGE-----
+" | n-gpg.sh -db     # password is opensesame
 ```
+
 
 ## n-table-convert.sh
 
