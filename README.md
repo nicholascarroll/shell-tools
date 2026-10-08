@@ -61,12 +61,21 @@ Usage: same as n-table-align.awk.
 
 ## n-gpt.sh
 
-Pipe text through GPT API with an instruction
+Pipe text through GPT API with an instruction. Each call is kept in
+`~/chats/last.eld`; `-c` continues it, or a chat FILE, as a conversation,
+and a continued `last.eld` becomes a chat of its own, named from its date
+and first instruction. Chats are Lisp data, to read and edit by hand
+(Emacs reads them with `read`); the format is specified in `CHATS.md` of
+shell.nicks.house, whose `n-gpt.sh` works the same way.
 
 Usage: 
 ```
-echo "hello" | n_gpt.sh "translate to Spanish"
+echo "hello" | n-gpt.sh "translate to Spanish"
+n-gpt.sh -c "explain that"
+n-gpt.sh -c ~/chats/2026-10-08-1530-translate-to-spanish "and in French?"
 ```
+
+Needs curl, jq and awk, and `OPENAI_API_KEY`. Tests: `sh tests/n-gpt-test.sh`.
 
 ## n-thai-zw.sh
 
