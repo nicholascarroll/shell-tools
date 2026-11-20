@@ -128,4 +128,6 @@ Usage:
 ```
 
 
+## Licence
 
+[0BSD](LICENSE).
